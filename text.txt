@@ -1,1 +1,6 @@
-Testing
+Commands to use:
+
+java Server 12345
+java Client localhost 12345 alice
+
+12345 is port, can be changed to anything I guess.
