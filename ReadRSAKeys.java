@@ -14,7 +14,7 @@ public class ReadRSAKeys {
 		KeyFactory kf = KeyFactory.getInstance("RSA");
 		PrivateKey prvKey = kf.generatePrivate(prvSpec);
 
-		f = new File("alice.pub");
+		f = new File("Alice.pub");
 		keyBytes = Files.readAllBytes(f.toPath());
 		X509EncodedKeySpec pubSpec = new X509EncodedKeySpec(keyBytes);
 		kf = KeyFactory.getInstance("RSA");
