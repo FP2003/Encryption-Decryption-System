@@ -6,3 +6,4 @@ java Client localhost 12345 alice
 12345 is port, can be changed to anything I guess.
 
 
+File RSA.java i believe is what we need to use next as it has the code to encrypt a message written

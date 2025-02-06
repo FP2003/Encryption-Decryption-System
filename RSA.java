@@ -1,6 +1,6 @@
 //SHOWS HOW TO ENCRYPT AND DECRYPT MESSAGES, USES THE PUBLIC KEY I BELIEVE 
 
-import java.io.*;
+import java.io.*; //
 import java.util.*;
 import java.security.*;
 import java.security.spec.*;
@@ -17,7 +17,8 @@ public class RSA {
 		if (args[0].equals("-e")) {
 
 			// read key
-			File f = new File("alice.pub");
+			
+			File f = new File("Alice.pub");
 			byte[] keyBytes = Files.readAllBytes(f.toPath());
 			X509EncodedKeySpec pubSpec = new X509EncodedKeySpec(keyBytes);
 			KeyFactory kf = KeyFactory.getInstance("RSA");
@@ -27,6 +28,8 @@ public class RSA {
 			System.out.println("Enter a message: ");
 			Scanner sc = new Scanner(System.in);
 			String msg = sc.nextLine();
+
+
 
 			// encrypt
 			Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -43,7 +46,7 @@ public class RSA {
 		else if (args[0].equals("-d")) {
 
 			// read key
-			File f = new File("alice.prv");
+			File f = new File("Alice.prv");
 			byte[] keyBytes = Files.readAllBytes(f.toPath());
 			PKCS8EncodedKeySpec prvSpec = new PKCS8EncodedKeySpec(keyBytes);
 			KeyFactory kf = KeyFactory.getInstance("RSA");
