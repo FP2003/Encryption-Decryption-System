@@ -4,19 +4,27 @@ import java.util.Scanner;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-
 public class Client {
-    private static final String SERVER_HOST = "localhost";
-    private static final int SERVER_PORT = 12345;
-
     public static void main(String[] args) {
-        try (Socket socket = new Socket(SERVER_HOST, SERVER_PORT);
+        if (args.length != 3) {
+            System.out.println("Usage: java Client <host> <port> <userid>");
+            return;
+        }
+        
+        String serverHost = args[0];
+        int serverPort = Integer.parseInt(args[1]);
+        String userId = args[2];
+        
+        System.out.println("Connecting to server: " + serverHost + " on port: " + serverPort);
+        System.out.println("User ID: " + userId);
+        
+        try (Socket socket = new Socket(serverHost, serverPort);
              DataInputStream in = new DataInputStream(socket.getInputStream());
              DataOutputStream out = new DataOutputStream(socket.getOutputStream());
              Scanner scanner = new Scanner(System.in)) {
 
             // Send a basic authentication message (this will be replaced later)
-            out.writeUTF("Hello, I'm a client");
+            out.writeUTF("Hello, I'm a client with ID: " + userId);
             String serverResponse = in.readUTF();
             System.out.println(serverResponse);
 
@@ -43,6 +51,8 @@ public class Client {
             e.printStackTrace();
         }
     }
+
+    
 
     private static void receiveFile(String filename, DataInputStream in) throws IOException {
         int fileLength = in.readInt();

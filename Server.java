@@ -4,12 +4,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class Server {
-    private static final int PORT = 12345;
-
     public static void main(String[] args) {
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("Server is running on port " + PORT);
-
+        if (args.length != 1) {
+            System.out.println("Usage: java Server <port>");
+            return;
+        }
+        
+        int port = Integer.parseInt(args[0]);
+        System.out.println("Server is running on port: " + port);
+        
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("Client connected.");
