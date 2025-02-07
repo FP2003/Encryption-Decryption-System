@@ -1,12 +1,10 @@
 import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
 import java.security.*;
 import java.security.spec.*;
 import javax.crypto.*;
-import javax.crypto.spec.*;
+import java.util.Base64;
 
 public class Client {
     public static void main(String[] args) {
@@ -14,54 +12,31 @@ public class Client {
             System.out.println("Usage: java Client <host> <port> <userid>");
             return;
         }
-        
+
         String serverHost = args[0];
         int serverPort = Integer.parseInt(args[1]);
         String userId = args[2];
 
-        
         try (Socket socket = new Socket(serverHost, serverPort);
-             DataInputStream in = new DataInputStream(socket.getInputStream());
              DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-             Scanner scanner = new Scanner(System.in)) {
+             DataInputStream in = new DataInputStream(socket.getInputStream())) {
 
-            // Send a basic authentication message (this will be replaced later)
-            out.writeUTF("Hello, I'm a client with ID: " + userId);
+            // Call firstServerCheck to get encrypted data and signature
+            String[] result = firstServerCheck(userId);
+            String encryptedData = result[0];
+            String signature = result[1];
 
-            try {
-                // Call firstServerCheck
-                String[] result = firstServerCheck(userId);
-                System.out.println("Encrypted Data (Base64): " + result[0]);
-                System.out.println("Signature (Base64): " + result[1]);
-            } catch (Exception e) {
-                System.err.println("Error occurred in firstServerCheck: " + e.getMessage());
-                e.printStackTrace();
-            }
-            
+            // Send encrypted data and signature to the server
+            out.writeUTF(encryptedData);
+            out.writeUTF(signature);
 
+            System.out.println("Sent encrypted data and signature to the server.");
+
+            // Receive confirmation from server
             String serverResponse = in.readUTF();
-            System.out.println(serverResponse);
+            System.out.println("Server Response: " + serverResponse);
 
-            // User interaction loop
-            while (true) {
-                System.out.print("Enter command (ls, get <filename>, bye): ");
-                String command = scanner.nextLine();
-                out.writeUTF(command);
-
-                if (command.equals("bye")) {
-                    System.out.println("Disconnected from server.");
-                    break;
-                } else if (command.equals("ls")) {
-                    int fileCount = in.readInt();
-                    System.out.println("Files on server:");
-                    for (int i = 0; i < fileCount; i++) {
-                        System.out.println(in.readUTF());
-                    }
-                } else if (command.startsWith("get ")) {
-                    receiveFile(command.substring(4), in);
-                }
-            }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -71,11 +46,8 @@ public class Client {
         byte[] randomBytes = new byte[16];
         new SecureRandom().nextBytes(randomBytes);
 
-        // Convert random bytes to Base64
-        String randomBytesBase64 = Base64.getEncoder().encodeToString(randomBytes);
-
         // Combine userId and random bytes into a readable string
-        String combinedData = userId + randomBytesBase64;
+        String combinedData = userId + Base64.getEncoder().encodeToString(randomBytes);
         System.out.println("Combined Data: " + combinedData);
 
         // Convert combined data to bytes
@@ -99,17 +71,14 @@ public class Client {
         byte[] signedData = signature.sign();
 
         // Convert encrypted data and signature to Base64
-        String encryptedDataBase64 = Base64.getEncoder().encodeToString(encryptedData);
-        String signatureBase64 = Base64.getEncoder().encodeToString(signedData);
-
-        // Return both encrypted data and signature
-        return new String[]{encryptedDataBase64, signatureBase64};
+        return new String[]{
+            Base64.getEncoder().encodeToString(encryptedData),
+            Base64.getEncoder().encodeToString(signedData)
+        };
     }
-    
 
     private static PublicKey loadPublicKey(String filename) throws Exception {
-        File keyFile = new File(filename);
-        byte[] keyBytes = Files.readAllBytes(keyFile.toPath());
+        byte[] keyBytes = Files.readAllBytes(new File(filename).toPath());
         X509EncodedKeySpec pubSpec = new X509EncodedKeySpec(keyBytes);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         return keyFactory.generatePublic(pubSpec);
@@ -120,20 +89,5 @@ public class Client {
         PKCS8EncodedKeySpec prvSpec = new PKCS8EncodedKeySpec(keyBytes);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         return keyFactory.generatePrivate(prvSpec);
-    }
-
-    
-
-    private static void receiveFile(String filename, DataInputStream in) throws IOException {
-        int fileLength = in.readInt();
-        if (fileLength == 0) {
-            System.out.println("File not found on server.");
-            return;
-        }
-
-        byte[] fileBytes = new byte[fileLength];
-        in.readFully(fileBytes);
-        Files.write(new File(filename).toPath(), fileBytes);
-        System.out.println("File received and saved: " + filename);
     }
 }

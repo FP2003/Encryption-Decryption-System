@@ -1,4 +1,51 @@
+import java.io.*;
+import java.net.*;
 
+public class Server {
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.println("Usage: java Server <port>");
+            return;
+        }
+
+        int port = Integer.parseInt(args[0]);
+        System.out.println("Server is running on port: " + port);
+
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
+            while (true) {
+                Socket clientSocket = serverSocket.accept();
+                System.out.println("Client connected.");
+                handleClient(clientSocket);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void handleClient(Socket clientSocket) {
+        try (DataInputStream in = new DataInputStream(clientSocket.getInputStream());
+             DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream())) {
+
+            // Receive encrypted data and signature
+            String encryptedData = in.readUTF();
+            String signature = in.readUTF();
+
+            // Print the received values
+            System.out.println("Received Encrypted Data: " + encryptedData);
+            System.out.println("Received Signature: " + signature);
+            System.out.println("This is the encryption code.");
+
+            // Send confirmation back to client
+            out.writeUTF("Server: Encrypted data and signature received successfully.");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+/* 
 import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
@@ -76,3 +123,4 @@ public class Server {
         out.write(fileBytes);
     }
 }
+*/
