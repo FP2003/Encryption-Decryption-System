@@ -67,9 +67,18 @@ public class Client {
     public static void firstServerCheck(String userId) throws Exception {
         System.out.println("Performing first server check for user: " + userId);
 
+        // Need 3 components here
+        // Need the users name which is in the Variable userId
+        // need to generate 16 fresh random bytes
+        // Both of those then need to be encrypted with RSA/ECB/PKCS1Padding, this is i believe where we use Server.pub
+        // after is then signiture which i have 0 idea, but believe we need to use Alice.prv to encrypt it
+
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 
-        File f = new File(userId + ".prv");
+        //File f = new File(userId + ".prv");
+        File f = new File("Server.pub");
+
+
         //byte[] keyBytes = Files.readAllBytes(f.toPath());
         //PKCS8EncodedKeySpec prvSpec = new PKCS8EncodedKeySpec(keyBytes);
         //KeyFactory kf = KeyFactory.getInstance("RSA");
