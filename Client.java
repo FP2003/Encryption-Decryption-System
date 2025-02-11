@@ -42,11 +42,14 @@ public class Client {
     }
 
     public static String[] firstServerCheck(String userId) throws Exception {
+        
         // Generate 16 fresh random bytes
+        // COVERS BULLET POINT 1
         byte[] randomBytes = new byte[16];
         new SecureRandom().nextBytes(randomBytes);
 
         // Combine userId and random bytes into a readable string
+        // COVERS BULLET POINT 1
         String combinedData = userId + Base64.getEncoder().encodeToString(randomBytes);
         System.out.println("Combined Data: " + combinedData);
 
@@ -55,22 +58,24 @@ public class Client {
 
         // Load Server's public key (Server.pub)
         PublicKey serverPublicKey = loadPublicKey("Server.pub");
+        // Load User's private key (Alice.prv)
+        PrivateKey userPrivateKey = loadPrivateKey(userId + ".prv");
 
         // Encrypt the combined userId + random bytes using RSA
+        // COVERS BULLET POINT 1
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.ENCRYPT_MODE, serverPublicKey);
         byte[] encryptedData = cipher.doFinal(dataToEncrypt);
 
-        // Load User's private key (Alice.prv)
-        PrivateKey userPrivateKey = loadPrivateKey(userId + ".prv");
-
         // Sign the encrypted data using SHA1withRSA
+        // COVERS BULLET POINT 1
         Signature signature = Signature.getInstance("SHA1withRSA");
         signature.initSign(userPrivateKey);
         signature.update(encryptedData);
         byte[] signedData = signature.sign();
 
         // Convert encrypted data and signature to Base64
+        // COVERS BULLET POINT 1
         return new String[]{
             Base64.getEncoder().encodeToString(encryptedData),
             Base64.getEncoder().encodeToString(signedData)
