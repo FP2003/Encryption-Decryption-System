@@ -12,3 +12,20 @@ To do:
 - check if hes done the 16 bytes differently or how hes done them in labs,
 - What data is used to create the signiture
 - How this client to server connection properly works
+
+# Regarding - Bytes (Lab 1 (Bytes.java))
+Snippet:
+`byte[] data = new byte[8];`
+So it is made relatively the same compared to our one:
+`byte[] randomBytes = new byte[16];`
+
+# Regarding - Signature
+The client encrypts the userid + 16 random bytes using the server's public key (Server.pub) with the RSA/ECB/PKCS1Padding algorithm.
+The encrypted data is then signed using the client's private key (<userid>.prv) with the SHA1withRSA signature algorithm.
+
+# Regarding - The client-to-server connection.
+The client sends encrypted data and a signature to the server.
+The server decrypts the data, verifies the signature, and authenticates the client.
+The server responds with its own encrypted data and signature.
+The client verifies the server's identity and validates the random bytes.
+Both parties generate a shared AES key for secure communication.
