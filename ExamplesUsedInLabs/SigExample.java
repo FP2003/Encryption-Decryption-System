@@ -1,8 +1,11 @@
 import java.io.*;
 import java.util.*;
 import java.security.*;
+import java.security.spec.PKCS8EncodedKeySpec; //This line was not in the example
+import java.security.spec.X509EncodedKeySpec; //This line was not in the example
 import java.nio.file.Files;
 
+// Copied from Lab 4, Exercise 2 solutions.
 public class SigExample {
 
 	public static void main(String [] args) throws Exception {
