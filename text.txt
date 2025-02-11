@@ -7,3 +7,8 @@ java Client localhost 12345 alice
 
 
 File RSA.java i believe is what we need to use next as it has the code to encrypt a message written
+
+To do:
+- check if hes done the 16 bytes differently or how hes done them in labs,
+- What data is used to create the signiture
+- How this client to server connection properly works
