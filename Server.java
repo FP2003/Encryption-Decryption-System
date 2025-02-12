@@ -5,6 +5,9 @@ import java.security.*;
 import java.security.spec.*;
 import java.util.Base64;
 import javax.crypto.Cipher;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+
 
 public class Server {
     public static void main(String[] args) {
@@ -80,6 +83,40 @@ public class Server {
             }
 
 
+            //BULLET POINT 3 NOW 
+            // COVERS BULLET POINT 3
+            byte[] sPrivateBytes = new byte[16];
+            new SecureRandom().nextBytes(sPrivateBytes);
+            String s_RandomBytesBase64 = Base64.getEncoder().encodeToString(sPrivateBytes);
+
+            System.out.println("Generated Server Random Bytes: "+ s_RandomBytesBase64);
+
+            // COVERS BULLET POINT 3
+            String combinedRandomBytes = randomBytesBase64 + s_RandomBytesBase64;
+
+            // COVERS BULLET POINT 3
+            PublicKey c_PublicKey = loadPublicKey(userId + ".pub");
+            Cipher encryptionCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            encryptionCipher.init(Cipher.ENCRYPT_MODE, c_PublicKey);
+            byte[] encrypted_combinedRandomBytes = encryptionCipher.doFinal(combinedRandomBytes.getBytes("UTF-8"));
+            String encrypted_combinedRandomBytesBase64 = Base64.getEncoder().encodeToString(encrypted_combinedRandomBytes);
+
+            System.out.println("Encrypted Combined Random Bytes: "+ encrypted_combinedRandomBytesBase64);
+
+            // COVERS BULLET POINT 3
+            Signature s_Signature = Signature.getInstance("SHA1withRSA");
+            s_Signature.initSign(privateKey);
+            s_Signature.update(encrypted_combinedRandomBytes);
+            byte[] s_Sig = s_Signature.sign();
+            String s_SignatureBase64 = Base64.getEncoder().encodeToString(s_Sig);
+
+            System.out.println("Server Signature: "+ s_Sig);
+            
+            // COVERS BULLET POINT 3
+            out.writeUTF(encrypted_combinedRandomBytesBase64);
+            out.writeUTF(s_SignatureBase64);
+
+            System.out.println("The server sent encrypted combined random butes and server signature to client.");
 
             
 
@@ -93,6 +130,14 @@ public class Server {
             System.err.println("❌ ERROR: Issue while decrypting data.");
             e.printStackTrace();
         }
+
+
+
+
+
+
+
+
     }
 
     private static PrivateKey loadPrivateKey(String filename) throws Exception {
