@@ -40,13 +40,12 @@ public class Server {
             System.out.println("Received Signature: " + signature);
 
             // Step 1: Load the server's private key
-            PrivateKey serverPrivateKey = loadPrivateKey("server.prv");
+            PrivateKey s_PrivateKey = loadPrivateKey("server.prv");
 
             // Step 2: Decrypt the encrypted data
             // COVERS BULLET POINT 2
-
             Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-            cipher.init(Cipher.DECRYPT_MODE, serverPrivateKey);
+            cipher.init(Cipher.DECRYPT_MODE, s_PrivateKey);
             byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedData));
             String combinedData = new String(decryptedBytes, "UTF-8");
 
@@ -55,10 +54,10 @@ public class Server {
             // Step 3: Extract the userid and random bytes
             // COVERS BULLET POINT 2
             String userId = combinedData.substring(0, combinedData.length() - 24); // Assuming userid is a simple string
-            String randomBytesBase64 = combinedData.substring(combinedData.length() - 24); // Last 24 characters are Base64-encoded random bytes
+            String c_RandomBytesBase64 = combinedData.substring(combinedData.length() - 24); // Last 24 characters are Base64-encoded random bytes
 
             System.out.println("Extracted User ID: " + userId);
-            System.out.println("Extracted Random Bytes: " + randomBytesBase64);
+            System.out.println("Extracted Random Bytes: " + c_RandomBytesBase64);
 
             // Step 4: Verify the signature using the client's public key
             // COVERS BULLET POINT 2
@@ -77,8 +76,40 @@ public class Server {
                 out.writeUTF("Server: Authentication failed.");
                 return; // Terminate the connection if authentication fails
             }
+            
+            // COVERS BULLET POINT 3
+            byte[] sPrivateBytes = new byte[16];
+            new SecureRandom().nextBytes(sPrivateBytes);
+            String s_RandomBytesBase64 = Base64.getEncoder().encodeToString(sPrivateBytes);
 
-            // TODO: Generate server's random bytes and send them back (Step 3)
+            System.out.println("Generated Server Random Bytes: "+ s_RandomBytesBase64);
+
+            // COVERS BULLET POINT 3
+            String combinedRandomBytes = c_RandomBytesBase64 + s_RandomBytesBase64;
+
+            // COVERS BULLET POINT 3
+            PublicKey c_PublicKey = loadPublicKey(userId + ".pub");
+            Cipher encryptionCipher = Cipher.getInstance("RSA/ESB/PKCS1Padding");
+            encryptionCipher.init(Cipher.ENCRYPT_MODE, c_PublicKey);
+            byte[] encrypted_combinedRandomBytes = encryptionCipher.doFinal(combinedRandomBytes.getBytes("UTF-8"));
+            String encrypted_combinedRandomBytesBase64 = Base64.getEncoder().encodeToString(encrypted_combinedRandomBytes);
+
+            System.out.println("Encrypted Combined Random Bytes: "+ encrypted_combinedRandomBytesBase64);
+
+            // COVERS BULLET POINT 3
+            Signature s_Signature = Signature.getInstance("SHA1withRSA");
+            s_Signature.initSign(s_PrivateKey);
+            s_Signature.update(encrypted_combinedRandomBytes);
+            byte[] s_Sig = s_Signature.sign();
+            String s_SignatureBase64 = Base64.getEncoder().encodeToString(s_Sig);
+
+            System.out.println("Server Signature: "+ s_Sig);
+            
+            // COVERS BULLET POINT 3
+            out.writeUTF(encrypted_combinedRandomBytesBase64);
+            out.writeUTF(s_SignatureBase64);
+
+            System.out.println("The server sent encrypted combined random butes and server signature to client.");
 
         } catch (Exception e) {
             e.printStackTrace();
