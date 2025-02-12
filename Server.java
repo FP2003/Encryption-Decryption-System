@@ -1,5 +1,10 @@
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
+import java.security.*;
+import java.security.spec.*;
+import java.util.Base64;
+import javax.crypto.Cipher;
 
 public class Server {
     public static void main(String[] args) {
@@ -26,23 +31,88 @@ public class Server {
         try (DataInputStream in = new DataInputStream(clientSocket.getInputStream());
              DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream())) {
 
-            // Receive encrypted data and signature
+            System.out.println("Client connected.");
+
+            // Receive encrypted data
             String encryptedData = in.readUTF();
+            System.out.println("✅ Received Encrypted Data: \n" + encryptedData);
+
+            // Receive signature
             String signature = in.readUTF();
+            System.out.println("✅ Received Signature: \n" + signature);
+            
+            // Load Server's private key (server.prv)
+            PrivateKey privateKey = loadPrivateKey("server.prv");
 
-            // Print the received values
-            System.out.println("Received Encrypted Data: " + encryptedData);
-            System.out.println("Received Signature: " + signature);
-            System.out.println("This is the encryption code.");
+            // Decode Base64 encrypted data
+            byte[] encryptedBytes = Base64.getDecoder().decode(encryptedData);
 
-            // Send confirmation back to client
-            out.writeUTF("Server: Encrypted data and signature received successfully.");
+            // Decrypt using RSA
+            Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            cipher.init(Cipher.DECRYPT_MODE, privateKey);
+            byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
+
+            //Convert decrypted bytes to string
+            String combinedData = new String(decryptedBytes, "UTF-8");
+
+            System.out.println("Decrypted Data: " + combinedData);
+            String userId = combinedData.substring(0, combinedData.length() - 24); // Assuming userid is a simple string
+            String randomBytesBase64 = combinedData.substring(combinedData.length() - 24); // Last 24 characters are Base64-encoded random bytes
+            System.out.println("Extracted User ID: " + userId);
+            System.out.println("Extracted Random Bytes: " + randomBytesBase64);
+
+
+
+            PublicKey clientPublicKey = loadPublicKey(userId + ".pub"); // Load client's public key using extracted userId
+            Signature sig = Signature.getInstance("SHA1withRSA"); // Initialize RSA signature verification using SHA1withRSA
+            sig.initVerify(clientPublicKey); // Set up signature verification with client's public key
+            sig.update(Base64.getDecoder().decode(encryptedData)); // Feed the original encrypted data into the verification process
+            boolean isValid = sig.verify(Base64.getDecoder().decode(signature)); // Verify signature against received signature
+            
+            // AUTHENTICATION FEEDBACK
+            if (isValid) {
+                System.out.println("Signature verified successfully."); // Log successful verification
+                out.writeUTF("Server: Authentication successful "); // Notify client of successful authentication
+            } else {
+                System.out.println("Signature verification failed."); // Log failed verification
+                out.writeUTF("Server: Authentication failed."); // Notify client of failed authentication
+                return; // Terminate the connection if authentication fails
+            }
+
+
+
+            
+
+            // Send a basic confirmation message to the client
+            //out.writeUTF("Server: Encrypted data and signature received successfully.");
 
         } catch (IOException e) {
+            System.err.println("❌ ERROR: Issue while reading data from client.");
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.err.println("❌ ERROR: Issue while decrypting data.");
             e.printStackTrace();
         }
     }
+
+    private static PrivateKey loadPrivateKey(String filename) throws Exception {
+        byte[] keyBytes = Files.readAllBytes(new File(filename).toPath());
+        PKCS8EncodedKeySpec prvSpec = new PKCS8EncodedKeySpec(keyBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return keyFactory.generatePrivate(prvSpec);
+    }
+
+    private static PublicKey loadPublicKey(String filename) throws Exception {
+        byte[] keyBytes = Files.readAllBytes(new File(filename).toPath());
+        X509EncodedKeySpec pubSpec = new X509EncodedKeySpec(keyBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return keyFactory.generatePublic(pubSpec);
+    }
 }
+
+
+
+
 
 
 /* 
