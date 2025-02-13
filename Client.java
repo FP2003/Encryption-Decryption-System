@@ -1,4 +1,3 @@
-
 import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
@@ -11,7 +10,8 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class Client {
     private static String firstGeneratedRandomBytesBase64; // ✅ Store the original random bytes for validation
-    
+    private static SecretKey aesKey; // 🚀 Store AES key after key exchange
+
     public static void main(String[] args) {
         // Ensures 3 commands (arguements) are provided. If not, user will see a message helping them understand the format.
         if (args.length != 3) {
@@ -40,7 +40,7 @@ public class Client {
                 // Send encrypted data and signature to the server
                 out.writeUTF(encryptedData);
                 out.writeUTF(signature);
-                System.out.println("Sent encrypted data and signature to the server.");
+                //System.out.println("Sent encrypted data and signature to the server.");
 
                 // Receive confirmation from the server
                 String serverResponse = in.readUTF();
@@ -60,20 +60,26 @@ public class Client {
                 while (true) {
                     System.out.print("Enter command (ls, get <filename>, bye): ");
                     String command = scanner.nextLine().trim();
+
+                    // Encrypt the command before sending
+                    byte[] encryptedCommand = encryptAES(aesKey, command.getBytes("UTF-8"));
+                    String encryptedCommandBase64 = Base64.getEncoder().encodeToString(encryptedCommand);
                     
-                    // If command is recognised as `bye` output a message to the client confirming the action.
+                    out.writeUTF(encryptedCommandBase64); // Send encrypted command
+
+                    // Receive and decrypt the response from server
+                    String encryptedResponseBase64 = in.readUTF();
+                    byte[] decryptedResponse = decryptAES(aesKey, Base64.getDecoder().decode(encryptedResponseBase64));
+                    String response = new String(decryptedResponse, "UTF-8");
+
+                    System.out.println("Server Response: " + response);
+
                     if (command.equalsIgnoreCase("bye")) {
                         System.out.println("Exiting client...");
                         return;
                     }
-
-                    // Send command to the server.
-                    out.writeUTF(command);
-                    
-                    // Receive and print response from server.
-                    String response = in.readUTF();
-                    System.out.println("Server Response: " + response);
                 }
+
 
             // Catches errors and prints a message. Tries to reconnect after 5 seconds, if failed will print another error.
             } catch (Exception e) {
@@ -192,6 +198,8 @@ public class Client {
         byte[] sharedSecret = combinedRandomBytes.getBytes("UTF-8");
         SecretKey aesKey = generateAESKey(sharedSecret);
         System.out.println("🔐 AES Key Generated: " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));
+        aesKey = generateAESKey(sharedSecret); // Correctly assigns to the global AES key
+
     }
 
     private static SecretKey generateAESKey(byte[] sharedSecret) throws Exception {
@@ -213,137 +221,18 @@ public class Client {
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         return keyFactory.generatePrivate(prvSpec);
     }
+
+    private static byte[] encryptAES(SecretKey key, byte[] data) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding"); // AES Encryption
+        cipher.init(Cipher.ENCRYPT_MODE, key);
+        return cipher.doFinal(data);
+    }
+    
+    private static byte[] decryptAES(SecretKey key, byte[] encryptedData) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding"); // AES Decryption
+        cipher.init(Cipher.DECRYPT_MODE, key);
+        return cipher.doFinal(encryptedData);
+    }
+
+    
 }
-
-
-/* 
-import java.io.*;
-import java.net.*;
-import java.nio.file.Files;
-import java.security.*;
-import java.security.spec.*;
-import javax.crypto.*;
-import java.util.Base64;
-import java.util.Scanner;
-
-public class Client {
-    public static void main(String[] args) {
-        if (args.length != 3) {
-            System.out.println("Usage: java Client <host> <port> <userid>");
-            return;
-        }
-
-        String serverHost = args[0];
-        int serverPort = Integer.parseInt(args[1]);
-        String userId = args[2];
-
-        while (true) { // Keep retrying connection until manually exited
-            try (Socket socket = new Socket(serverHost, serverPort);
-                 DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-                 DataInputStream in = new DataInputStream(socket.getInputStream())) {
-
-                // Call firstServerCheck to get encrypted data and signature
-                String[] result = firstServerCheck(userId);
-                String encryptedData = result[0];
-                String signature = result[1];
-
-                // Send encrypted data and signature to the server
-                out.writeUTF(encryptedData);
-                out.writeUTF(signature);
-
-                System.out.println("Sent encrypted data and signature to the server.");
-
-                // Receive confirmation from server
-                String serverResponse = in.readUTF();
-                System.out.println("Server Response: " + serverResponse);
-
-                // Keep the system running, allowing the user to continue interacting
-                Scanner scanner = new Scanner(System.in);
-                while (true) {
-                    System.out.print("Enter command (ls, get <filename>, bye): ");
-                    String command = scanner.nextLine().trim();
-
-                    if (command.equalsIgnoreCase("bye")) {
-                        System.out.println("Exiting client...");
-                        return;
-                    }
-
-                    // Send command to server
-                    out.writeUTF(command);
-                    
-                    // Receive and print response from server
-                    String response = in.readUTF();
-                    System.out.println("Server Response: " + response);
-                }
-
-            } catch (Exception e) {
-                System.err.println("An error occurred: " + e.getMessage());
-                e.printStackTrace();
-                System.out.println("Retrying connection in 5 seconds...");
-                try {
-                    Thread.sleep(5000); // Wait 5 seconds before retrying connection
-                } catch (InterruptedException ie) {
-                    System.err.println("Retry interrupted.");
-                }
-            }
-        }
-    }
-
-    public static String[] firstServerCheck(String userId) throws Exception {
-        
-        // Generate 16 fresh random bytes
-        // COVERS BULLET POINT 1
-        byte[] randomBytes = new byte[16];
-        new SecureRandom().nextBytes(randomBytes);
-
-        // Combine userId and random bytes into a readable string
-        // COVERS BULLET POINT 1
-        String combinedData = userId + Base64.getEncoder().encodeToString(randomBytes);
-        System.out.println("Combined Data: " + combinedData);
-
-        // Convert combined data to bytes
-        byte[] dataToEncrypt = combinedData.getBytes("UTF-8");
-
-        // Load Server's public key (Server.pub)
-        PublicKey serverPublicKey = loadPublicKey("Server.pub");
-        // Load User's private key (Alice.prv)
-        PrivateKey userPrivateKey = loadPrivateKey(userId + ".prv");
-
-        // Encrypt the combined userId + random bytes using RSA
-        // COVERS BULLET POINT 1
-        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        cipher.init(Cipher.ENCRYPT_MODE, serverPublicKey);
-        byte[] encryptedData = cipher.doFinal(dataToEncrypt);
-
-        // Sign the encrypted data using SHA1withRSA
-        // COVERS BULLET POINT 1
-        Signature signature = Signature.getInstance("SHA1withRSA");
-        signature.initSign(userPrivateKey);
-        signature.update(encryptedData);
-        byte[] signedData = signature.sign();
-
-        // Convert encrypted data and signature to Base64
-        // COVERS BULLET POINT 1
-        return new String[]{
-            Base64.getEncoder().encodeToString(encryptedData),
-            Base64.getEncoder().encodeToString(signedData)
-        };
-    }
-
-    private static PublicKey loadPublicKey(String filename) throws Exception {
-        byte[] keyBytes = Files.readAllBytes(new File(filename).toPath());
-        X509EncodedKeySpec pubSpec = new X509EncodedKeySpec(keyBytes);
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        return keyFactory.generatePublic(pubSpec);
-    }
-
-    private static PrivateKey loadPrivateKey(String filename) throws Exception {
-        byte[] keyBytes = Files.readAllBytes(new File(filename).toPath());
-        PKCS8EncodedKeySpec prvSpec = new PKCS8EncodedKeySpec(keyBytes);
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        return keyFactory.generatePrivate(prvSpec);
-    }
-}
-
-*/
-
