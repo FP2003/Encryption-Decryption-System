@@ -6,11 +6,15 @@ import java.security.*;
 import java.security.spec.*;
 import java.util.Base64;
 import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 
 
 public class Server {
+    private static SecretKey aesKey;
     public static void main(String[] args) {
         if (args.length != 1) {
             System.out.println("Usage: java Server <port>");
@@ -86,22 +90,23 @@ public class Server {
 
             //BULLET POINT 3 NOW 
             // COVERS BULLET POINT 3
-            byte[] serverPrivateBytes = new byte[16];
-            new SecureRandom().nextBytes(serverPrivateBytes);
-            String serverRandomBytesBase64 = Base64.getEncoder().encodeToString(serverPrivateBytes);
+            byte[] sPrivateBytes = new byte[16];
+            new SecureRandom().nextBytes(sPrivateBytes);
+            String s_RandomBytesBase64 = Base64.getEncoder().encodeToString(sPrivateBytes);
 
-            System.out.println("Generated Server Random Bytes: "+ serverRandomBytesBase64);
-
-            // COVERS BULLET POINT 3
-            String combinedRandomBytes = randomBytesBase64 + serverRandomBytesBase64;
+            System.out.println("Generated Server Random Bytes: "+ s_RandomBytesBase64);
 
             // COVERS BULLET POINT 3
+            String combinedRandomBytes = randomBytesBase64 + s_RandomBytesBase64;
+
+            // COVERS BULLET POINT 3
+            PublicKey c_PublicKey = loadPublicKey(userId + ".pub");
             Cipher encryptionCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-            encryptionCipher.init(Cipher.ENCRYPT_MODE, clientPublicKey);
+            encryptionCipher.init(Cipher.ENCRYPT_MODE, c_PublicKey);
             byte[] encrypted_combinedRandomBytes = encryptionCipher.doFinal(combinedRandomBytes.getBytes("UTF-8"));
             String encrypted_combinedRandomBytesBase64 = Base64.getEncoder().encodeToString(encrypted_combinedRandomBytes);
 
-            System.out.println("Encrypted Combined Random Bytes: "+ encrypted_combinedRandomBytesBase64);
+            //System.out.println("Encrypted Combined Random Bytes: "+ encrypted_combinedRandomBytesBase64);
 
             // COVERS BULLET POINT 3
             Signature s_Signature = Signature.getInstance("SHA1withRSA");
@@ -116,7 +121,11 @@ public class Server {
             out.writeUTF(encrypted_combinedRandomBytesBase64);
             out.writeUTF(s_SignatureBase64);
 
-            System.out.println("The server sent encrypted combined random butes and server signature to client.");
+            byte[] sharedSecret = combinedRandomBytes.getBytes("UTF-8");
+            SecretKey aesKey = generateAESKey(sharedSecret);
+            System.out.println("🔐 AES Key Generated: " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));
+            aesKey = generateAESKey(sharedSecret);
+            //System.out.println("The server sent encrypted combined random butes and server signature to client.");
 
             
 
@@ -137,7 +146,12 @@ public class Server {
 
 
 
+    }
 
+    private static SecretKey generateAESKey(byte[] sharedSecret) throws Exception {
+        MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+        byte[] hashedKey = sha256.digest(sharedSecret);
+        return new SecretKeySpec(hashedKey, "AES");
     }
 
     private static PrivateKey loadPrivateKey(String filename) throws Exception {
@@ -153,89 +167,17 @@ public class Server {
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         return keyFactory.generatePublic(pubSpec);
     }
+
+    private static byte[] encryptAES(SecretKey key, byte[] data) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding"); // AES Encryption
+        cipher.init(Cipher.ENCRYPT_MODE, key);
+        return cipher.doFinal(data);
+    }
+    
+    private static byte[] decryptAES(SecretKey key, byte[] encryptedData) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding"); // AES Decryption
+        cipher.init(Cipher.DECRYPT_MODE, key);
+        return cipher.doFinal(encryptedData);
+    }
+
 }
-
-
-
-
-
-
-/* 
-import java.io.*;
-import java.net.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-public class Server {
-    public static void main(String[] args) {
-        if (args.length != 1) {
-            System.out.println("Usage: java Server <port>");
-            return;
-        }
-        
-        int port = Integer.parseInt(args[0]);
-        System.out.println("Server is running on port: " + port);
-        
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
-            while (true) {
-                Socket clientSocket = serverSocket.accept();
-                System.out.println("Client connected.");
-                handleClient(clientSocket);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static void handleClient(Socket clientSocket) {
-        try (DataInputStream in = new DataInputStream(clientSocket.getInputStream());
-             DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream())) {
-
-            // Simple authentication (will be replaced by RSA authentication later)
-            String clientMessage = in.readUTF();
-            System.out.println("Received from client: " + clientMessage);
-            out.writeUTF("Server: Authentication Successful");
-
-            // Handle basic commands
-            while (true) {
-                String command = in.readUTF();
-                if (command.equals("bye")) {
-                    System.out.println("Client disconnected.");
-                    break;
-                } else if (command.equals("ls")) {
-                    listFiles(out);
-                } else if (command.startsWith("get ")) {
-                    sendFile(command.substring(4), out);
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static void listFiles(DataOutputStream out) throws IOException {
-        File dir = new File(".");
-        String[] files = dir.list();
-        if (files != null) {
-            out.writeInt(files.length);
-            for (String file : files) {
-                out.writeUTF(file);
-            }
-        } else {
-            out.writeInt(0);
-        }
-    }
-
-    private static void sendFile(String filename, DataOutputStream out) throws IOException {
-        File file = new File(filename);
-        if (!file.exists()) {
-            out.writeInt(0);
-            return;
-        }
-
-        byte[] fileBytes = Files.readAllBytes(file.toPath()); // ✅ Fixed with import
-        out.writeInt(fileBytes.length);
-        out.write(fileBytes);
-    }
-}
-*/
