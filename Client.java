@@ -70,11 +70,12 @@ public class Client {
                     // Send command to the server.
                     out.writeUTF(command);
                     
-                    // Receive and print response from server
+                    // Receive and print response from server.
                     String response = in.readUTF();
                     System.out.println("Server Response: " + response);
                 }
 
+            // Catches errors and prints a message. Tries to reconnect after 5 seconds, if failed will print another error.
             } catch (Exception e) {
                 System.err.println("An error occurred: " + e.getMessage());
                 e.printStackTrace();
@@ -88,6 +89,8 @@ public class Client {
         }
     }
 
+    // Once connected to the server, passes the userId and generates 16 random bytes. Both combined into a variable which is-
+    // encrypted with RSA/ECB/PKCS1Padding, RSAkeys to prove the identity of client.
     public static String[] serverConnectionCheck(String userId) throws Exception {
         
         // Generate 16 fresh random bytes
@@ -109,7 +112,7 @@ public class Client {
         // Load User's private key (Alice.prv)
         PrivateKey userPrivateKey = loadPrivateKey(userId + ".prv");
 
-        // Encrypt the combined userId + random bytes using RSA
+        // Encrypt the combined userId + random bytes using RSA/ECB/PKCS1Padding
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.ENCRYPT_MODE, serverPublicKey);
         byte[] encryptedData = cipher.doFinal(dataToEncrypt);
