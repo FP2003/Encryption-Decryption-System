@@ -13,32 +13,36 @@ public class Client {
     private static String firstGeneratedRandomBytesBase64; // ✅ Store the original random bytes for validation
 
     public static void main(String[] args) {
+        // Ensures 3 commands (arguements) are provided. If not, user will see a message helping them understand the format.
         if (args.length != 3) {
-            System.out.println("Usage: java Client <host> <port> <userid>");
+            System.out.println("Use: java Client <host> <port> <userid>");
             return;
         }
 
+        // The 3 necessary commands are assigned with variables which we use to connect with server and obtain userId.
         String serverHost = args[0];
         int serverPort = Integer.parseInt(args[1]);
         String userId = args[2];
 
-        while (true) { // Keep retrying connection until manually exited
+        // Keep the script connection running using a while loop until exited manualy otherwise.
+        while (true) {
+
+            // Attempts to connect using serverHost and serverPort variables.
             try (Socket socket = new Socket(serverHost, serverPort);
                  DataOutputStream out = new DataOutputStream(socket.getOutputStream());
                  DataInputStream in = new DataInputStream(socket.getInputStream())) {
 
-                // Call firstServerCheck to get encrypted data and signature
-                String[] result = firstServerCheck(userId);
+                // Calls serverConnectionCheck to get encrypted data and signature, passing through the userId.
+                String[] result = serverConnectionCheck(userId);
                 String encryptedData = result[0];
                 String signature = result[1];
 
                 // Send encrypted data and signature to the server
                 out.writeUTF(encryptedData);
                 out.writeUTF(signature);
-
                 System.out.println("Sent encrypted data and signature to the server.");
 
-                // Receive confirmation from server
+                // Receive confirmation from the server
                 String serverResponse = in.readUTF();
                 System.out.println("Server Response: " + serverResponse);
 
@@ -47,18 +51,23 @@ public class Client {
                     receiveServerResponse(in, userId); // ✅ Call function to process server's response
                 }
 
-                // Keep the system running, allowing the user to continue interacting
+                // Keep the system running, allowing the user to continue interacting and listen to potential commands.
+                // -- COMMANDS --
+                // ls - request for the server to send a list of filenames of all files available for download.
+                // get - TODO
+                // bye - client has no further requests. Both sides end connection. The client quits, the server waits for next client.
                 Scanner scanner = new Scanner(System.in);
                 while (true) {
                     System.out.print("Enter command (ls, get <filename>, bye): ");
                     String command = scanner.nextLine().trim();
-
+                    
+                    // If command is recognised as `bye` output a message to the client confirming the action.
                     if (command.equalsIgnoreCase("bye")) {
                         System.out.println("Exiting client...");
                         return;
                     }
 
-                    // Send command to server
+                    // Send command to the server.
                     out.writeUTF(command);
                     
                     // Receive and print response from server
@@ -79,7 +88,7 @@ public class Client {
         }
     }
 
-    public static String[] firstServerCheck(String userId) throws Exception {
+    public static String[] serverConnectionCheck(String userId) throws Exception {
         
         // Generate 16 fresh random bytes
         byte[] randomBytes = new byte[16];
