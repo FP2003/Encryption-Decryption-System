@@ -11,7 +11,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class Client {
     private static String firstGeneratedRandomBytesBase64; // ✅ Store the original random bytes for validation
-
+    
     public static void main(String[] args) {
         // Ensures 3 commands (arguements) are provided. If not, user will see a message helping them understand the format.
         if (args.length != 3) {
@@ -151,6 +151,8 @@ public class Client {
         cipher.init(Cipher.DECRYPT_MODE, clientPrivateKey);
         byte[] decryptedCombinedBytes = cipher.doFinal(encryptedCombinedBytes);
 
+         
+
         // Convert decrypted bytes to string
         String combinedRandomBytes = new String(decryptedCombinedBytes, "UTF-8");
 
@@ -159,6 +161,7 @@ public class Client {
         // Extract the first 16 bytes (should match the client's original random bytes)
         String clientSentRandomBytes = combinedRandomBytes.substring(0, 24);
         String serverGeneratedRandomBytes = combinedRandomBytes.substring(24);
+
 
         System.out.println("🔑 Client's Original Random Bytes: " + clientSentRandomBytes);
         System.out.println("🔑 Server's Generated Random Bytes: " + serverGeneratedRandomBytes);
@@ -170,12 +173,14 @@ public class Client {
         sig.update(encryptedCombinedBytes);
         boolean isVerified = sig.verify(serverSignature);
 
+        
         if (isVerified) {
             System.out.println("✅ Server's Signature Verified Successfully!");
         } else {
             System.out.println("❌ Server's Signature Verification Failed!");
             throw new SecurityException("Server authentication failed.");
         }
+        
 
         // Final validation: Ensure the first 16 bytes match the client's original random bytes
         if (!clientSentRandomBytes.equals(firstGeneratedRandomBytesBase64)) {
@@ -183,7 +188,7 @@ public class Client {
             throw new SecurityException("Random byte mismatch. Terminating connection.");
         }
 
-        // Generate the AES key
+        //Generate the AES key
         byte[] sharedSecret = combinedRandomBytes.getBytes("UTF-8");
         SecretKey aesKey = generateAESKey(sharedSecret);
         System.out.println("🔐 AES Key Generated: " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));

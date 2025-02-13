@@ -5,6 +5,9 @@ import java.security.*;
 import java.security.spec.*;
 import java.util.Base64;
 import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 
@@ -116,6 +119,10 @@ public class Server {
             out.writeUTF(encrypted_combinedRandomBytesBase64);
             out.writeUTF(s_SignatureBase64);
 
+            byte[] sharedSecret = combinedRandomBytes.getBytes("UTF-8");
+            SecretKey aesKey = generateAESKey(sharedSecret);
+            System.out.println("🔐 AES Key Generated: " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));
+
             System.out.println("The server sent encrypted combined random butes and server signature to client.");
 
             
@@ -137,7 +144,12 @@ public class Server {
 
 
 
+    }
 
+    private static SecretKey generateAESKey(byte[] sharedSecret) throws Exception {
+        MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+        byte[] hashedKey = sha256.digest(sharedSecret);
+        return new SecretKeySpec(hashedKey, "AES");
     }
 
     private static PrivateKey loadPrivateKey(String filename) throws Exception {
