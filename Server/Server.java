@@ -147,7 +147,26 @@ public class Server {
                     out.writeUTF(Base64.getEncoder().encodeToString(encryptedGoodbye));
                     System.out.println("Client requested bye. Closing connection.");
                     break;
+                    
+                } else if (command.equalsIgnoreCase("ls")) {
+                    // List files in the current folder (excluding .prv files)
+                    File[] files = new File("./").listFiles();
+                    StringBuilder sb = new StringBuilder();
+                    for (File f : files) {
+                        if (f.isFile() && !f.getName().endsWith(".prv")) {
+                            sb.append(f.getName()).append("\n");
+                        }
+                    }
+                    String fileList = sb.toString();
+                    if (fileList.isEmpty()) {
+                        fileList = "No files available.";
+                    }
+                    // Encrypt the list of filenames and send it back
+                    byte[] encryptedResponse = encryptAES_CBC(fileList.getBytes("UTF-8"));
+                    String encryptedResponseBase64 = Base64.getEncoder().encodeToString(encryptedResponse);
+                    out.writeUTF(encryptedResponseBase64);
                 }
+                
                 // You can add handling for "ls" and "get" commands here.
             }
 
