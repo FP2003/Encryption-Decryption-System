@@ -147,7 +147,7 @@ public class Server {
                     out.writeUTF(Base64.getEncoder().encodeToString(encryptedGoodbye));
                     System.out.println("Client requested bye. Closing connection.");
                     break;
-                    
+
                 } else if (command.equalsIgnoreCase("ls")) {
                     // List files in the current folder (excluding .prv files)
                     File[] files = new File("./").listFiles();
@@ -165,9 +165,31 @@ public class Server {
                     byte[] encryptedResponse = encryptAES_CBC(fileList.getBytes("UTF-8"));
                     String encryptedResponseBase64 = Base64.getEncoder().encodeToString(encryptedResponse);
                     out.writeUTF(encryptedResponseBase64);
-                }
+
+                } else if (command.toLowerCase().startsWith("get ")) {
+                    // Extract the requested filename (after "get ")
+                    String filename = command.substring(4).trim();
+                    File file = new File("./" + filename);
                 
-                // You can add handling for "ls" and "get" commands here.
+                    // Check if the file exists, is a file (not a folder), and does not end with ".prv"
+                    if (file.exists() && file.isFile() && !file.getName().endsWith(".prv")) {
+                        // Read the file contents as bytes
+                        byte[] fileContent = Files.readAllBytes(file.toPath());
+                        // Encrypt the file content using AES/CBC/PKCS5Padding
+                        byte[] encryptedFileContent = encryptAES_CBC(fileContent);
+                        // Encode the encrypted bytes as Base64 and send to the client
+                        String encryptedFileContentBase64 = Base64.getEncoder().encodeToString(encryptedFileContent);
+                        out.writeUTF(encryptedFileContentBase64);
+                        System.out.println("Sent encrypted file content for " + filename);
+                    } else {
+                        // File not found or not allowed: send an error message
+                        String errorMessage = "Error: File does not exist.";
+                        byte[] encryptedError = encryptAES_CBC(errorMessage.getBytes("UTF-8"));
+                        String encryptedErrorBase64 = Base64.getEncoder().encodeToString(encryptedError);
+                        out.writeUTF(encryptedErrorBase64);
+                        System.out.println("File " + filename + " does not exist or is not accessible.");
+                    }
+                }
             }
 
         } catch (IOException e) {
