@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.*;
 import java.security.spec.*;
 import javax.crypto.*;
@@ -55,22 +56,40 @@ public class Client {
                 while (true) {
                     System.out.print("Enter command (ls, get <filename>, bye): ");
                     String command = scanner.nextLine().trim();
-
+                
+                    // If it's a get command, extract the requested filename.
+                    String requestedFilename = "";
+                    if (command.toLowerCase().startsWith("get ")) {
+                        requestedFilename = command.substring(4).trim();
+                    }
+                
                     // Encrypt the command using AES/CBC/PKCS5Padding with the current IV
                     byte[] encryptedCommand = encryptAES_CBC(command.getBytes("UTF-8"));
                     String encryptedCommandBase64 = Base64.getEncoder().encodeToString(encryptedCommand);
                     out.writeUTF(encryptedCommandBase64);
-
+                
                     // Read and decrypt the server's response
                     String encryptedResponseBase64 = in.readUTF();
                     byte[] decryptedResponse = decryptAES_CBC(Base64.getDecoder().decode(encryptedResponseBase64));
                     String response = new String(decryptedResponse, "UTF-8");
-
+                
                     System.out.println("Server Response: " + response);
-
+                
+                    // If the command is "bye", exit.
                     if (command.equalsIgnoreCase("bye")) {
                         System.out.println("Exiting client...");
                         return;
+                    }
+                    
+                    // Only process the file-saving logic if the command was "get <filename>"
+                    if (command.toLowerCase().startsWith("get ")) {
+                        if (!response.startsWith("Error:")) {
+                            // Save the file locally with the same filename
+                            Files.write(Paths.get(requestedFilename), response.getBytes("UTF-8"));
+                            System.out.println("File " + requestedFilename + " saved locally.");
+                        } else {
+                            System.out.println(response); // Print error message
+                        }
                     }
                 }
 
