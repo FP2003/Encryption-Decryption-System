@@ -92,7 +92,6 @@ public class Client {
                         }
                     }
                 }
-
             } catch (Exception e) {
                 System.err.println("An error occurred: " + e.getMessage());
                 e.printStackTrace();
@@ -120,6 +119,7 @@ public class Client {
 
         // Load the server's public key (assumed to be in the local folder as "Server.pub")
         PublicKey serverPublicKey = loadPublicKey("Server.pub");
+
         // Load the client's private key (assumed to be in the local folder as "<userId>.prv")
         PrivateKey userPrivateKey = loadPrivateKey(userId + ".prv");
 
@@ -144,10 +144,10 @@ public class Client {
     private static void receiveServerResponse(DataInputStream in, String userId) throws Exception {
         // Receive the server's encrypted combined random bytes and signature
         String encryptedCombinedBytesBase64 = in.readUTF();
-        System.out.println("✅ Received Encrypted Combined Random Bytes: \n" + encryptedCombinedBytesBase64);
+        System.out.println("Received Encrypted Combined Random Bytes: \n" + encryptedCombinedBytesBase64);
 
         String serverSignatureBase64 = in.readUTF();
-        System.out.println("✅ Received Server Signature: \n" + serverSignatureBase64);
+        System.out.println("Received Server Signature: \n" + serverSignatureBase64);
 
         byte[] encryptedCombinedBytes = Base64.getDecoder().decode(encryptedCombinedBytesBase64);
         byte[] serverSignature = Base64.getDecoder().decode(serverSignatureBase64);
@@ -158,14 +158,16 @@ public class Client {
         cipher.init(Cipher.DECRYPT_MODE, clientPrivateKey);
         byte[] decryptedCombinedBytes = cipher.doFinal(encryptedCombinedBytes);
         String combinedRandomBytes = new String(decryptedCombinedBytes, "UTF-8");
-        System.out.println("🔓 Decrypted Combined Random Bytes: " + combinedRandomBytes);
+        System.out.println("Decrypted Combined Random Bytes: " + combinedRandomBytes);
 
         // The first 24 characters correspond to the client's random bytes (Base64-encoded)
         String clientSentRandomBytes = combinedRandomBytes.substring(0, 24);
+
         // The remaining characters represent the server's random bytes (Base64-encoded)
         String serverGeneratedRandomBytes = combinedRandomBytes.substring(24);
-        System.out.println("🔑 Client's Original Random Bytes: " + clientSentRandomBytes);
-        System.out.println("🔑 Server's Generated Random Bytes: " + serverGeneratedRandomBytes);
+
+        System.out.println("Client's Original Random Bytes: " + clientSentRandomBytes);
+        System.out.println("Server's Generated Random Bytes: " + serverGeneratedRandomBytes);
 
         // Verify the server's signature
         PublicKey serverPublicKey = loadPublicKey("Server.pub");
@@ -174,21 +176,22 @@ public class Client {
         sig.update(encryptedCombinedBytes);
         boolean isVerified = sig.verify(serverSignature);
         if (isVerified) {
-            System.out.println("✅ Server's Signature Verified Successfully!");
+            System.out.println("Server's Signature Verified Successfully!");
         } else {
-            System.out.println("❌ Server's Signature Verification Failed!");
+            System.out.println("Server's Signature Verification Failed!");
             throw new SecurityException("Server authentication failed.");
         }
 
         // Final validation: Ensure the client's original random bytes match what was sent
         if (!clientSentRandomBytes.equals(firstGeneratedRandomBytesBase64)) {
-            System.out.println("❌ Random byte mismatch! Possible attack detected.");
+            System.out.println("Random byte mismatch! Possible attack detected.");
             throw new SecurityException("Random byte mismatch. Terminating connection.");
         }
 
         // Generate the AES key using the professor's suggested method:
         // Decode the client's random bytes (16 bytes expected) from Base64
         byte[] clientRandomBytes = Base64.getDecoder().decode(firstGeneratedRandomBytesBase64);
+
         // Extract and decode the server's random bytes (16 bytes expected)
         byte[] serverRandomBytes = Base64.getDecoder().decode(serverGeneratedRandomBytes);
 
@@ -213,23 +216,23 @@ public class Client {
     }
 
     // Updated AES encryption routine using CBC mode with IV update.
+    // Update the IV: compute MD5 of the current IV.
     private static byte[] encryptAES_CBC(byte[] data) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         IvParameterSpec ivSpec = new IvParameterSpec(currentIVEnc);
         cipher.init(Cipher.ENCRYPT_MODE, aesKey, ivSpec);
         byte[] ciphertext = cipher.doFinal(data);
-        // Update the IV: compute MD5 of the current IV.
         currentIVEnc = computeMD5(currentIVEnc);
         return ciphertext;
     }
 
     // Updated AES decryption routine using CBC mode with IV update.
+    // Update the IV: compute MD5 of the current IV.
     private static byte[] decryptAES_CBC(byte[] encryptedData) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         IvParameterSpec ivSpec = new IvParameterSpec(currentIVDec);
         cipher.init(Cipher.DECRYPT_MODE, aesKey, ivSpec);
         byte[] plaintext = cipher.doFinal(encryptedData);
-        // Update the IV: compute MD5 of the current IV.
         currentIVDec = computeMD5(currentIVDec);
         return plaintext;
     }

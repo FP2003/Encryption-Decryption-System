@@ -43,11 +43,11 @@ public class Server {
 
             // Receive encrypted data from the client
             String encryptedData = in.readUTF();
-            System.out.println("✅ Received Encrypted Data: \n" + encryptedData);
+            System.out.println("Received Encrypted Data: \n" + encryptedData);
 
             // Receive the client's signature
             String signature = in.readUTF();
-            System.out.println("✅ Received Signature: \n" + signature);
+            System.out.println("Received Signature: \n" + signature);
             
             // Load Server's private key (server.prv)
             PrivateKey privateKey = loadPrivateKey("Server.prv");
@@ -126,7 +126,7 @@ public class Server {
 
             // Directly create the AES key from the 32-byte shared secret.
             aesKey = new SecretKeySpec(sharedSecret, "AES");
-            System.out.println("🔐 AES Key Generated: " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));
+            System.out.println("AES Key Generated: " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));
             // ----- End Updated AES Key Derivation -----
 
             // Initialize the IVs for encryption and decryption by computing MD5 of the shared secret.
@@ -193,10 +193,10 @@ public class Server {
             }
 
         } catch (IOException e) {
-            System.err.println("❌ ERROR: Issue while reading data from client.");
+            System.err.println("ERROR: Issue while reading data from client.");
             e.printStackTrace();
         } catch (Exception e) {
-            System.err.println("❌ ERROR: Issue while decrypting data.");
+            System.err.println("ERROR: Issue while decrypting data.");
             e.printStackTrace();
         }
     }
