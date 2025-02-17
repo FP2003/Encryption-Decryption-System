@@ -45,9 +45,10 @@ public class Client {
 
                 // Receive authentication confirmation from the server
                 String serverResponse = in.readUTF();
-                System.out.println("Server Response: " + serverResponse);
+                
 
                 if (serverResponse.contains("Authentication successful")) {
+                    System.out.println(serverResponse);
                     receiveServerResponse(in, userId);
                 }
 
@@ -114,7 +115,6 @@ public class Client {
 
         // Combine the userId with the Base64-encoded random bytes
         String combinedData = userId + firstGeneratedRandomBytesBase64;
-        System.out.println("Combined Data: " + combinedData);
         byte[] dataToEncrypt = combinedData.getBytes("UTF-8");
 
         // Load the server's public key (assumed to be in the local folder as "Server.pub")
@@ -144,10 +144,8 @@ public class Client {
     private static void receiveServerResponse(DataInputStream in, String userId) throws Exception {
         // Receive the server's encrypted combined random bytes and signature
         String encryptedCombinedBytesBase64 = in.readUTF();
-        System.out.println("Received Encrypted Combined Random Bytes: \n" + encryptedCombinedBytesBase64);
 
         String serverSignatureBase64 = in.readUTF();
-        System.out.println("Received Server Signature: \n" + serverSignatureBase64);
 
         byte[] encryptedCombinedBytes = Base64.getDecoder().decode(encryptedCombinedBytesBase64);
         byte[] serverSignature = Base64.getDecoder().decode(serverSignatureBase64);
@@ -158,16 +156,12 @@ public class Client {
         cipher.init(Cipher.DECRYPT_MODE, clientPrivateKey);
         byte[] decryptedCombinedBytes = cipher.doFinal(encryptedCombinedBytes);
         String combinedRandomBytes = new String(decryptedCombinedBytes, "UTF-8");
-        System.out.println("Decrypted Combined Random Bytes: " + combinedRandomBytes);
 
         // The first 24 characters correspond to the client's random bytes (Base64-encoded)
         String clientSentRandomBytes = combinedRandomBytes.substring(0, 24);
 
         // The remaining characters represent the server's random bytes (Base64-encoded)
         String serverGeneratedRandomBytes = combinedRandomBytes.substring(24);
-
-        System.out.println("Client's Original Random Bytes: " + clientSentRandomBytes);
-        System.out.println("Server's Generated Random Bytes: " + serverGeneratedRandomBytes);
 
         // Verify the server's signature
         PublicKey serverPublicKey = loadPublicKey("Server.pub");
@@ -176,16 +170,16 @@ public class Client {
         sig.update(encryptedCombinedBytes);
         boolean isVerified = sig.verify(serverSignature);
         if (isVerified) {
-            System.out.println("Server's Signature Verified Successfully!");
+            System.out.println("Server signature verified");
         } else {
-            System.out.println("Server's Signature Verification Failed!");
-            throw new SecurityException("Server authentication failed.");
+            System.out.println("Server signature failed");
+            throw new SecurityException("Server authentication failed");
         }
 
         // Final validation: Ensure the client's original random bytes match what was sent
         if (!clientSentRandomBytes.equals(firstGeneratedRandomBytesBase64)) {
-            System.out.println("Random byte mismatch! Possible attack detected.");
-            throw new SecurityException("Random byte mismatch. Terminating connection.");
+            System.out.println("Random byte mismatch");
+            throw new SecurityException("Random byte mismatch");
         }
 
         // Generate the AES key using the professor's suggested method:
@@ -202,7 +196,6 @@ public class Client {
 
         // Directly create the AES key from the shared secret
         aesKey = new SecretKeySpec(sharedSecret, "AES");
-        System.out.println("🔐 AES Key Generated: " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));
 
         // Initialize the IVs for encryption and decryption by computing MD5 of the shared secret.
         currentIVEnc = computeMD5(sharedSecret);

@@ -27,7 +27,6 @@ public class Server {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                System.out.println("Client connected.");
                 handleClient(clientSocket);
             }
         } catch (IOException e) {
@@ -39,15 +38,15 @@ public class Server {
         try (DataInputStream in = new DataInputStream(clientSocket.getInputStream());
              DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream())) {
 
-            System.out.println("Client connected.");
+            System.out.println("Client connected");
 
             // Receive encrypted data from the client
             String encryptedData = in.readUTF();
-            System.out.println("Received Encrypted Data: \n" + encryptedData);
+            System.out.println("Received Encrypted Data");
 
             // Receive the client's signature
             String signature = in.readUTF();
-            System.out.println("Received Signature: \n" + signature);
+            System.out.println("Received Signature");
             
             // Load Server's private key (server.prv)
             PrivateKey privateKey = loadPrivateKey("Server.prv");
@@ -60,11 +59,9 @@ public class Server {
 
             // Convert decrypted bytes to string and extract the userid and client's 16 random bytes
             String combinedData = new String(decryptedBytes, "UTF-8");
-            System.out.println("Decrypted Data: " + combinedData);
             String userId = combinedData.substring(0, combinedData.length() - 24);
             String randomBytesBase64 = combinedData.substring(combinedData.length() - 24);
-            System.out.println("Extracted User ID: " + userId);
-            System.out.println("Extracted Random Bytes: " + randomBytesBase64);
+
 
             // Verify the client's signature using the client's public key (userId.pub)
             PublicKey clientPublicKey = loadPublicKey(userId + ".pub");
@@ -86,7 +83,6 @@ public class Server {
             byte[] sPrivateBytes = new byte[16];
             new SecureRandom().nextBytes(sPrivateBytes);
             String s_RandomBytesBase64 = Base64.getEncoder().encodeToString(sPrivateBytes);
-            System.out.println("Generated Server Random Bytes: " + s_RandomBytesBase64);
 
             // Concatenate the client's Base64 random bytes and the server's Base64 random bytes
             String combinedRandomBytes = randomBytesBase64 + s_RandomBytesBase64;
@@ -104,7 +100,6 @@ public class Server {
             s_Signature.update(encrypted_combinedRandomBytes);
             byte[] s_Sig = s_Signature.sign();
             String s_SignatureBase64 = Base64.getEncoder().encodeToString(s_Sig);
-            System.out.println("Server Signature: " + s_SignatureBase64);
             
             // Send the encrypted combined random bytes and its signature to the client
             out.writeUTF(encrypted_combinedRandomBytesBase64);
@@ -126,7 +121,6 @@ public class Server {
 
             // Directly create the AES key from the 32-byte shared secret.
             aesKey = new SecretKeySpec(sharedSecret, "AES");
-            System.out.println("AES Key Generated: " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));
             // ----- End Updated AES Key Derivation -----
 
             // Initialize the IVs for encryption and decryption by computing MD5 of the shared secret.
